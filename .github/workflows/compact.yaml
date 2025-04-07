@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Create Access Token
         run: |
@@ -54,7 +54,7 @@ jobs:
           curl -o my-aura.backup "$download_url" # Use the download URL to download the snapshot
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: my-aura-backup
           path: my-aura.backup
@@ -65,10 +65,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
   
       - name: Download Artifact and save it in the backups folder
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.2.1
         with:
           name: my-aura-backup
           path: backups/ # This will save the artifact in the backups folder
