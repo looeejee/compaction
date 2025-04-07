@@ -45,31 +45,39 @@ jobs:
           --header 'Content-Type: application/json' \
           --header "Authorization: Bearer $AURA_TOKEN"
 
-
-      - name: Get Latest Snapshot
-        id: get_snapshot
+      - name: Wait for Snapshot to be Ready
+        id: wait_for_snapshot
         run: |
-          response=$(curl --request GET 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
-          --header 'Content-Type: application/x-www-form-urlencoded' \
-          --header "Authorization: Bearer $AURA_TOKEN")
+          snapshot_id=${{ env.snapshot_id }}
+          echo "Waiting for snapshot $snapshot_id to be ready..."
 
-          # Use jq to parse the response and extract the snapshot ID
-          snapshot_id=$(echo "$response" | jq -r '.snapshots[0].id') # Adjust the path based on the actual JSON structure
+          # Poll for the snapshot status
+          for i in {1..30}; do # Wait for up to 30 attempts (adjust as needed)
+            sleep 10 # Wait for 10 seconds between attempts
+            response=$(curl --request GET "https://api.neo4j.io/v1/instances/48da975f/snapshots/$snapshot_id" \
+            --header 'Content-Type: application/x-www-form-urlencoded' \
+            --header "Authorization: Bearer $AURA_TOKEN")
 
-          echo "Snapshot ID: $snapshot_id"
-          echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
+            # Check if the snapshot is ready
+            status=$(echo "$response" | jq -r '.status') # Adjust the path based on the actual JSON structure
+            echo "Snapshot status: $status"
 
-      - name: Get Download URL
-        id: get_download_url
-        run: |
-          download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
-          --header 'Content-Type: application/x-www-form-urlencoded' \
-          --header "Authorization: Bearer $AURA_TOKEN")
+            if [ "$status" == "READY" ]; then
+              echo "Snapshot $snapshot_id is ready."
+              break
+            fi
+          done
+            - name: Get Download URL
+              id: get_download_url
+              run: |
+                download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
+                --header 'Content-Type: application/x-www-form-urlencoded' \
+                --header "Authorization: Bearer $AURA_TOKEN")
 
-          # Use jq to parse the response and extract the download URL
-          download_url=$(echo "$download_response" | jq -r '.download_url') # Adjust the path based on the actual JSON structure
-          echo "Download URL: $download_url"
-          echo "download_url=$download_url" >> $GITHUB_ENV # Set the download URL as an environment variable for later use
+                # Use jq to parse the response and extract the download URL
+                download_url=$(echo "$download_response" | jq -r '.download_url') # Adjust the path based on the actual JSON structure
+                echo "Download URL: $download_url"
+                echo "download_url=$download_url" >> $GITHUB_ENV # Set the download URL as an environment variable for later use
 
       - name: Download Snapshot
         run: |
