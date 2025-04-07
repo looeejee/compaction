@@ -39,16 +39,20 @@ jobs:
           echo "AURA_TOKEN=${AURA_TOKEN}" >> $GITHUB_ENV
 
       - name: Create Snapshot
+        id: create_snapshot
         run: |
           echo "Using AURA_TOKEN: $AURA_TOKEN" # For debugging, remove in production
-          curl --request POST 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
+          response=$(curl --request POST 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
           --header 'Content-Type: application/json' \
-          --header "Authorization: Bearer $AURA_TOKEN"
+          --header "Authorization: Bearer $AURA_TOKEN")
 
-            # Extract the snapshot ID from the response
-            snapshot_id=$(echo "$response" | jq -r '.id') # Adjust the path based on the actual JSON structure
-            echo "Snapshot ID: $snapshot_id"
-            echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
+          # Print the response for debugging
+          echo "Response: $response"
+
+          # Extract the snapshot ID from the response
+          snapshot_id=$(echo "$response" | jq -r '.data.snapshot_id') # Adjusted to match the response structure
+          echo "Snapshot ID: $snapshot_id"
+          echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
 
       - name: Wait for Snapshot to be Ready
         id: wait_for_snapshot
@@ -57,11 +61,14 @@ jobs:
           echo "Waiting for snapshot $snapshot_id to be ready..."
 
           # Poll for the snapshot status
-          for i in {1..10}; do # Wait for up to 30 attempts (adjust as needed)
+          for i in {1..10}; do # Wait for up to 10 attempts (adjust as needed)
             sleep 30 # Wait for 30 seconds between attempts
             response=$(curl --request GET "https://api.neo4j.io/v1/instances/48da975f/snapshots/$snapshot_id" \
-            --header 'Content-Type: application/json' \
+            --header 'Content-Type: application/x-www-form-urlencoded' \
             --header "Authorization: Bearer $AURA_TOKEN")
+
+            # Print the response for debugging
+            echo "Snapshot status response: $response"
 
             # Check if the snapshot is ready
             status=$(echo "$response" | jq -r '.status') # Adjust the path based on the actual JSON structure
@@ -72,17 +79,22 @@ jobs:
               break
             fi
           done
-            - name: Get Download URL
-              id: get_download_url
-              run: |
-                download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
-                --header 'Content-Type: application/json' \
-                --header "Authorization: Bearer $AURA_TOKEN")
 
-                # Use jq to parse the response and extract the download URL
-                download_url=$(echo "$download_response" | jq -r '.download_url') # Adjust the path based on the actual JSON structure
-                echo "Download URL: $download_url"
-                echo "download_url=$download_url" >> $GITHUB_ENV # Set the download URL as an environment variable for later use
+      - name: Get Download URL
+        id: get_download_url
+        run: |
+          snapshot_id=${{ env.snapshot_id }}
+          download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
+          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --header "Authorization: Bearer $AURA_TOKEN")
+
+          # Print the download response for debugging
+          echo "Download URL response: $download_response"
+
+          # Use jq to parse the response and extract the download URL
+          download_url=$(echo "$download_response" | jq -r '.download_url') # Adjust the path based on the actual JSON structure
+          echo "Download URL: $download_url"
+          echo "download_url=$download_url" >> $GITHUB_ENV # Set the download URL as an environment variable for later use
 
       - name: Download Snapshot
         run: |
