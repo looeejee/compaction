@@ -74,7 +74,7 @@ jobs:
             status=$(echo "$response" | jq -r '.status') # Adjust the path based on the actual JSON structure
             echo "Snapshot status: $status"
 
-            if [ "$status" == "READY" ]; then
+            if [ "$status" == "Completed" ]; then
               echo "Snapshot $snapshot_id is ready."
               break
             fi
