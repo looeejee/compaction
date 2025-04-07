@@ -59,21 +59,21 @@ jobs:
         run: |
           snapshot_id=${{ env.snapshot_id }}
           echo "Waiting for snapshot $snapshot_id to be ready..."
-
+      
           # Poll for the snapshot status
-          for i in {1..10}; do # Wait for up to 10 attempts (adjust as needed)
-            sleep 30 # Wait for 30 seconds between attempts
+          for i in {1..30}; do # Wait for up to 30 attempts (adjust as needed)
+            sleep 10 # Wait for 10 seconds between attempts
             response=$(curl --request GET "https://api.neo4j.io/v1/instances/48da975f/snapshots/$snapshot_id" \
             --header 'Content-Type: application/x-www-form-urlencoded' \
             --header "Authorization: Bearer $AURA_TOKEN")
-
+      
             # Print the response for debugging
             echo "Snapshot status response: $response"
-
+      
             # Check if the snapshot is ready
-            status=$(echo "$response" | jq -r '.status') # Adjust the path based on the actual JSON structure
+            status=$(echo "$response" | jq -r '.data.status') # Adjusted to match the response structure
             echo "Snapshot status: $status"
-
+      
             if [ "$status" == "Completed" ]; then
               echo "Snapshot $snapshot_id is ready."
               break
