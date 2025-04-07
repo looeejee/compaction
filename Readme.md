@@ -104,7 +104,7 @@ docker run -it --rm \
     neo4j-admin database upload neo4j --from-path=/data/dumps --to-uri=neo4j+s://48da975f.databases.neo4j.io --overwrite-destination=true --verbose
 ```
 
-![Verify Compacted Datastore Size in Aura](/img/sysinfo_output_post_compaction_aura.png.png)
+![Verify Compacted Datastore Size in Aura](/img/sysinfo_output_post_compaction_aura.png)
 
 # Bonus: Automate the process with GitHub Actions
 
