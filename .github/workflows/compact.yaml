@@ -2,6 +2,11 @@ name: Compact AuraDB Instance
 
 on:
   workflow_dispatch:
+    inputs:
+        snapshot_id:
+          description: 'Enter Snapshot ID (leave blank to create a new snapshot)'
+          required: false
+          default: ''
 
 jobs:
   create_snapshot:
@@ -38,10 +43,11 @@ jobs:
 
           echo "AURA_TOKEN=${AURA_TOKEN}" >> $GITHUB_ENV
 
-      - name: Create Snapshot
+      - name: Create Snapshot (if no snapshot_id provided)
         id: create_snapshot
+        if: ${{ inputs.snapshot_id == '' }}
         run: |
-          echo "Using AURA_TOKEN: $AURA_TOKEN" # For debugging, remove in production
+          #echo "Using AURA_TOKEN: $AURA_TOKEN" # For debugging, remove in production
           response=$(curl --request POST 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
           --header 'Content-Type: application/json' \
           --header "Authorization: Bearer $AURA_TOKEN")
@@ -53,6 +59,16 @@ jobs:
           snapshot_id=$(echo "$response" | jq -r '.data.snapshot_id') # Adjusted to match the response structure
           echo "Snapshot ID: $snapshot_id"
           echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
+
+      - name: Set Snapshot ID
+        id: set_snapshot_id
+        run: |
+          if [ -z "${{ inputs.snapshot_id }}" ]; then
+            echo "Using newly created snapshot ID: ${{ env.snapshot_id }}"
+          else
+            echo "Using provided snapshot ID: ${{ inputs.snapshot_id }}"
+            echo "snapshot_id=${{ inputs.snapshot_id }}" >> $GITHUB_ENV
+          fi
 
       - name: Wait for Snapshot to be Ready
         id: wait_for_snapshot
@@ -87,16 +103,16 @@ jobs:
           download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
           --header 'Content-Type: application/x-www-form-urlencoded' \
           --header "Authorization: Bearer $AURA_TOKEN")
-      
+
           # Print the download response for debugging (you can comment this out in production)
-          echo "Download URL response: $download_response"
-      
+          #echo "Download URL response: $download_response"
+
           # Use jq to parse the response and extract the download URL
           download_url=$(echo "$download_response" | jq -r '.data.download_url') # Adjusted to match the response structure
-      
+
           # Store the download URL in an environment variable for later use
           echo "download_url=$download_url" >> $GITHUB_ENV
-      
+
           # Optionally, you can print a message without revealing the URL
           echo "Download URL has been retrieved and stored securely."
 
@@ -126,7 +142,7 @@ jobs:
   
       - name: Load Backup to Container
         run: |
-          docker run -it --rm \
+          docker run --rm \
             --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
             -v ${PWD}/data/:/data  \
             -v ${PWD}/backups/my-aura.backup:/backups/my-aura.backup \
@@ -135,7 +151,7 @@ jobs:
   
       - name: Copy and Compact
         run: |
-          docker run -it --rm \
+          docker run --rm \
             --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
             -v ${PWD}/data/:/data  \
             neo4j/neo4j-admin:2025-enterprise \
@@ -143,7 +159,7 @@ jobs:
   
       - name: Create Dump of Compacted Database
         run: | 
-          docker run -it --rm \
+          docker run --rm \
             --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
             -v ${PWD}/data/:/data  \
             neo4j/neo4j-admin:2025-enterprise \
@@ -151,7 +167,7 @@ jobs:
   
       - name: Upload the Compacted Database to the Instance
         run: |
-          docker run -it --rm \
+          docker run --rm \
             --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
             -v ${PWD}/data/:/data  \
             neo4j/neo4j-admin:2025-enterprise \
