@@ -142,6 +142,9 @@ jobs:
   
       - name: Load Backup to Container
         run: |
+          echo ${PWD}
+          echo "PRINT FILES IN PWD"
+          ls -la
           docker run --rm \
             --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
             -v ${PWD}/data/:/data  \
