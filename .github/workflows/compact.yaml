@@ -52,10 +52,10 @@ jobs:
           echo "Waiting for snapshot $snapshot_id to be ready..."
 
           # Poll for the snapshot status
-          for i in {1..30}; do # Wait for up to 30 attempts (adjust as needed)
-            sleep 10 # Wait for 10 seconds between attempts
+          for i in {1..10}; do # Wait for up to 30 attempts (adjust as needed)
+            sleep 30 # Wait for 30 seconds between attempts
             response=$(curl --request GET "https://api.neo4j.io/v1/instances/48da975f/snapshots/$snapshot_id" \
-            --header 'Content-Type: application/x-www-form-urlencoded' \
+            --header 'Content-Type: application/json' \
             --header "Authorization: Bearer $AURA_TOKEN")
 
             # Check if the snapshot is ready
@@ -71,7 +71,7 @@ jobs:
               id: get_download_url
               run: |
                 download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
-                --header 'Content-Type: application/x-www-form-urlencoded' \
+                --header 'Content-Type: application/json' \
                 --header "Authorization: Bearer $AURA_TOKEN")
 
                 # Use jq to parse the response and extract the download URL
