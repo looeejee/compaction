@@ -15,22 +15,22 @@ Download latest Neo4j-Admin
 
 
 # Load database from .backup to container
-
+```
 docker run -it --rm \
     --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
     -v ${PWD}/data/:/data  \
     -v ${PWD}/backups/my-naura.backup:/backups/my-aura.backup \
     neo4j/neo4j-admin:2025-enterprise \
     neo4j-admin database load --from-path=/backups/ neo4j --overwrite-destination=true --verbose
-
+```
 # Copy and Compact database neo4j
-
+```
 docker run -it --rm \
     --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
     -v ${PWD}/data/:/data  \
     neo4j/neo4j-admin:2025-enterprise \
     neo4j-admin database copy neo4j neo4j --compact-node-store=true --verbose 
-
+```
 # Create a new dump
 
 ## Start container to validate that the compacted database starts and that the copy operation worked successfully
@@ -49,22 +49,22 @@ docker run --name=compact-neo4j --detach \
 `docker stop compact-neo4j`
 
 # Create DUMP
-
+```
 docker run -it --rm \
     --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
     -v ${PWD}/data/:/data  \
     neo4j/neo4j-admin:2025-enterprise \
     bin/neo4j-admin database dump neo4j --verbose
-
+```
 
 # Run neo4j-admin database upload to upload new compacted dump to Neo4j AuraDB instance
-
+```
 docker run -it --rm \
     --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
     -v ${PWD}/data/:/data  \
     neo4j/neo4j-admin:2025-enterprise \
     neo4j-admin database upload neo4j --from-path=/data/dumps --to-uri=neo4j+s://48da975f.databases.neo4j.io --overwrite-destination=true --verbose
-
+```
 
 # Bonus: Automate the process with GitHub Actions
 
