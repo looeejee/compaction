@@ -147,7 +147,7 @@ jobs:
             -v ${PWD}/data/:/data  \
             -v ${PWD}/backups/my-aura.backup:/backups/my-aura.backup \
             neo4j/neo4j-admin:2025-enterprise \
-            neo4j-admin database load --from-path=/backups/my-aura.backup --overwrite-destination=true --verbose
+            neo4j-admin database load neo4j --from-path=/backups/my-aura.backup --overwrite-destination=true --verbose
   
       - name: Copy and Compact
         run: |
