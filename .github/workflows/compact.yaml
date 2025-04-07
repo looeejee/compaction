@@ -17,32 +17,32 @@ jobs:
           --user "${{ secrets.USER }}:${{ secrets.PASSWORD }}" \
           --header 'Content-Type: application/x-www-form-urlencoded' \
           --data-urlencode 'grant_type=client_credentials')
-      
+
           # Print the response for debugging
           echo "Response: $response"
-      
+
           # Check if the response contains an error
           if echo "$response" | grep -q '"error"'; then
             echo "Error creating access token"
             exit 1
           fi
-      
+
           # Extract the token using jq
           AURA_TOKEN=$(echo "$response" | jq -r '.access_token')
-      
+
           # Check if the token was extracted successfully
           if [ -z "$AURA_TOKEN" ]; then
             echo "Failed to extract AURA_TOKEN"
             exit 1
           fi
-      
+
           echo "AURA_TOKEN=${AURA_TOKEN}" >> $GITHUB_ENV
-      
+
       - name: Create Snapshot
         run: |
           echo "Using AURA_TOKEN: $AURA_TOKEN" # For debugging, remove in production
           curl --request POST 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
-          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --header 'Content-Type: application/json' \
           --header "Authorization: Bearer $AURA_TOKEN"
 
 
