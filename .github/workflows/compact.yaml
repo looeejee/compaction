@@ -45,6 +45,11 @@ jobs:
           --header 'Content-Type: application/json' \
           --header "Authorization: Bearer $AURA_TOKEN"
 
+            # Extract the snapshot ID from the response
+            snapshot_id=$(echo "$response" | jq -r '.id') # Adjust the path based on the actual JSON structure
+            echo "Snapshot ID: $snapshot_id"
+            echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
+
       - name: Wait for Snapshot to be Ready
         id: wait_for_snapshot
         run: |
