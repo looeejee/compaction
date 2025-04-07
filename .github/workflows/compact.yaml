@@ -1,0 +1,107 @@
+name: Compact AuraDB Instance
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Access Token
+        run: |
+          AURA_TOKEN=$(curl --request POST 'https://api.neo4j.io/oauth/token' \
+          --user '${{ secrets.USER }}:${{ secrets.PASSWORD }}' \
+          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --data-urlencode 'grant_type=client_credentials')
+          echo "AURA_TOKEN=${AURA_TOKEN}" >> $GITHUB_ENV
+
+      - name: Create Snapshot
+        run: |
+          curl --request POST 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
+          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --header "Authorization: Bearer $AURA_TOKEN"
+
+      - name: Get Latest Snapshot
+        id: get_snapshot
+        run: |
+          response=$(curl --request GET 'https://api.neo4j.io/v1/instances/48da975f/snapshots' \
+          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --header "Authorization: Bearer $AURA_TOKEN")
+
+          # Use jq to parse the response and extract the snapshot ID
+          snapshot_id=$(echo "$response" | jq -r '.snapshots[0].id') # Adjust the path based on the actual JSON structure
+
+          echo "Snapshot ID: $snapshot_id"
+          echo "snapshot_id=$snapshot_id" >> $GITHUB_ENV # Set the snapshot ID as an environment variable for later use
+
+      - name: Get Download URL
+        id: get_download_url
+        run: |
+          download_response=$(curl --request GET "https://api.neo4j.io/v1beta5/instances/48da975f/snapshots/$snapshot_id?include_download_url=true" \
+          --header 'Content-Type: application/x-www-form-urlencoded' \
+          --header "Authorization: Bearer $AURA_TOKEN")
+
+          # Use jq to parse the response and extract the download URL
+          download_url=$(echo "$download_response" | jq -r '.download_url') # Adjust the path based on the actual JSON structure
+          echo "Download URL: $download_url"
+          echo "download_url=$download_url" >> $GITHUB_ENV # Set the download URL as an environment variable for later use
+
+      - name: Download Snapshot
+        run: |
+          curl -o my-aura.backup "$download_url" # Use the download URL to download the snapshot
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: my-aura-backup
+          path: my-aura.backup
+
+  compact_and_push:
+    runs-on: ubuntu-latest
+    needs: create_snapshot
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+  
+      - name: Download Artifact and save it in the backups folder
+        uses: actions/download-artifact@v3
+        with:
+          name: my-aura-backup
+          path: backups/ # This will save the artifact in the backups folder
+  
+      - name: Load Backup to Container
+        run: |
+          docker run -it --rm \
+            --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
+            -v ${PWD}/data/:/data  \
+            -v ${PWD}/backups/my-aura.backup:/backups/my-aura.backup \
+            neo4j/neo4j-admin:2025-enterprise \
+            neo4j-admin database load --from-path=/backups/my-aura.backup --overwrite-destination=true --verbose
+  
+      - name: Copy and Compact
+        run: |
+          docker run -it --rm \
+            --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
+            -v ${PWD}/data/:/data  \
+            neo4j/neo4j-admin:2025-enterprise \
+            neo4j-admin database copy neo4j neo4j --compact-node-store=true --verbose 
+  
+      - name: Create Dump of Compacted Database
+        run: | 
+          docker run -it --rm \
+            --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
+            -v ${PWD}/data/:/data  \
+            neo4j/neo4j-admin:2025-enterprise \
+            bin/neo4j-admin database dump neo4j --verbose
+  
+      - name: Upload the Compacted Database to the Instance
+        run: |
+          docker run -it --rm \
+            --env=NEO4J_ACCEPT_LICENSE_AGREEMENT=yes  \
+            -v ${PWD}/data/:/data  \
+            neo4j/neo4j-admin:2025-enterprise \
+            neo4j-admin database upload neo4j --from-path=/data/dumps --to-uri=neo4j+s://48da975f.databases.neo4j.io --username neo4j --password ${{ secrets.AURA_PASSWORD }} --overwrite-destination=true --verbose
